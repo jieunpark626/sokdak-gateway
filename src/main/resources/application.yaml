@@ -1,5 +1,5 @@
 server:
-  port: 8000 # Gateway 포트
+  port: ${SERVER_PORT:8000} # Gateway 포트
 
 spring:
   application:
@@ -10,7 +10,7 @@ spring:
       routes:
         # 인증 불필요 경로 (Public)
         - id: auth-route
-          uri: http://localhost:8080
+          uri: ${SOKDAK_SERVER_URL:http://localhost:8080}
           predicates:
             - Path=/auth/**
           filters:
@@ -18,24 +18,57 @@ spring:
 
         # 인증 필요 경로 (Protected) - sokdak 서버
         - id: journals-route
-          uri: http://localhost:8080
+          uri: ${SOKDAK_SERVER_URL:http://localhost:8080}
           predicates:
             - Path=/journals/**
           filters:
             - name: JwtAuthenticationFilter
 
         - id: users-route
-          uri: http://localhost:8080
+          uri: ${SOKDAK_SERVER_URL:http://localhost:8080}
           predicates:
             - Path=/users/**
           filters:
             - name: JwtAuthenticationFilter
 
         # 인증 필요 경로 (Protected) - AI 서버
-        - id: ai-route
-          uri: http://localhost:8001
+        # POST /characters/** - 사용량 체크 필요
+        - id: ai-characters-post-route
+          uri: ${AI_SERVER_URL:http://localhost:8001}
           predicates:
             - Path=/characters/**
+            - Method=POST
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: UsageLimitCheckFilter
+              args:
+                action: CHARACTER_CREATE
+
+        # 기타 /characters/** - 사용량 체크 불필요
+        - id: ai-characters-route
+          uri: ${AI_SERVER_URL:http://localhost:8001}
+          predicates:
+            - Path=/characters/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # POST /conversations/** - 사용량 체크 필요
+        - id: ai-conversations-post-route
+          uri: ${AI_SERVER_URL:http://localhost:8001}
+          predicates:
+            - Path=/conversations/**
+            - Method=POST
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: UsageLimitCheckFilter
+              args:
+                action: AI_CHAT
+
+        # 기타 /conversations/** - 사용량 체크 불필요
+        - id: ai-conversations-route
+          uri: ${AI_SERVER_URL:http://localhost:8001}
+          predicates:
+            - Path=/conversations/**
           filters:
             - name: JwtAuthenticationFilter
 
@@ -43,7 +76,7 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins: "*" # TODO : 개발용 > 배포 시 변경할것
+            allowedOrigins: ${ALLOWED_ORIGINS:http://localhost:3000}
             allowedMethods:
               - GET
               - POST
@@ -51,11 +84,16 @@ spring:
               - DELETE
               - PATCH
               - OPTIONS
-            allowedHeaders: "*"
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+              - Accept
+              - X-Requested-With
             exposedHeaders:
               - X-User-Id
               - X-Gateway-Token
             allowCredentials: false
+            maxAge: 3600
 
 # JWT 설정
 jwt:
