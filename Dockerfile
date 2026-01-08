@@ -4,9 +4,10 @@ COPY --chown=gradle:gradle . .
 
 RUN chmod +x ./gradlew && ./gradlew build -x test --no-daemon
 
-FROM openjdk:17-slim
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 COPY --from=build /home/gradle/src/build/libs/*-SNAPSHOT.jar app.jar
 
 EXPOSE 8000
 ENTRYPOINT ["java", "-jar", "app.jar"]
+
