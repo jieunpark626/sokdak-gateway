@@ -1,3 +1,122 @@
+server:
+  port: ${SERVER_PORT:8000} # Gateway 포트
+
 spring:
   application:
     name: sokdak-gateway
+
+  cloud:
+    gateway:
+      routes:
+        # 인증 불필요 경로 (Public)
+        - id: auth-route
+          uri: ${SOKDAK_SERVER_URL:http://localhost:8080}
+          predicates:
+            - Path=/auth/**
+          filters:
+            - AddRequestHeader=X-Gateway-Token,${GATEWAY_SECURITY_TOKEN}
+
+        # 인증 필요 경로 (Protected) - sokdak 서버
+        - id: journals-route
+          uri: ${SOKDAK_SERVER_URL:http://localhost:8080}
+          predicates:
+            - Path=/journals/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        - id: users-route
+          uri: ${SOKDAK_SERVER_URL:http://localhost:8080}
+          predicates:
+            - Path=/users/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # 인증 필요 경로 (Protected) - AI 서버
+        # POST /characters/** - 사용량 체크 필요
+        - id: ai-characters-post-route
+          uri: ${AI_SERVER_URL:http://localhost:8001}
+          predicates:
+            - Path=/characters/**
+            - Method=POST
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: UsageLimitCheckFilter
+              args:
+                action: CHARACTER_CREATE
+
+        # 기타 /characters/** - 사용량 체크 불필요
+        - id: ai-characters-route
+          uri: ${AI_SERVER_URL:http://localhost:8001}
+          predicates:
+            - Path=/characters/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # POST /conversations/** - 사용량 체크 필요
+        - id: ai-conversations-post-route
+          uri: ${AI_SERVER_URL:http://localhost:8001}
+          predicates:
+            - Path=/conversations/**
+            - Method=POST
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: UsageLimitCheckFilter
+              args:
+                action: AI_CHAT
+
+        # 기타 /conversations/** - 사용량 체크 불필요
+        - id: ai-conversations-route
+          uri: ${AI_SERVER_URL:http://localhost:8001}
+          predicates:
+            - Path=/conversations/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+      # 전역 CORS 설정
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: ${ALLOWED_ORIGINS:http://localhost:3000}
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+              - Accept
+              - X-Requested-With
+            exposedHeaders:
+              - X-User-Id
+              - X-Gateway-Token
+            allowCredentials: false
+            maxAge: 3600
+
+# JWT 설정
+jwt:
+  secret: ${JWT_SECRET}
+
+# Gateway 보안 토큰
+gateway:
+  security:
+    token: ${GATEWAY_SECURITY_TOKEN}
+
+# Actuator 설정
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+
+# 로깅 설정
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty: INFO
+    com.sokdak.gateway: DEBUG
