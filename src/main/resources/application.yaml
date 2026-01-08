@@ -1,3 +1,84 @@
+server:
+  port: 8000 # Gateway 포트
+
 spring:
   application:
     name: sokdak-gateway
+
+  cloud:
+    gateway:
+      routes:
+        # 인증 불필요 경로 (Public)
+        - id: auth-route
+          uri: http://localhost:8080
+          predicates:
+            - Path=/auth/**
+          filters:
+            - AddRequestHeader=X-Gateway-Token,${GATEWAY_SECURITY_TOKEN}
+
+        # 인증 필요 경로 (Protected) - sokdak 서버
+        - id: journals-route
+          uri: http://localhost:8080
+          predicates:
+            - Path=/journals/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        - id: users-route
+          uri: http://localhost:8080
+          predicates:
+            - Path=/users/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # 인증 필요 경로 (Protected) - AI 서버
+        - id: ai-route
+          uri: http://localhost:8001
+          predicates:
+            - Path=/characters/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+      # 전역 CORS 설정
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*" # TODO : 개발용 > 배포 시 변경할것
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: "*"
+            exposedHeaders:
+              - X-User-Id
+              - X-Gateway-Token
+            allowCredentials: false
+
+# JWT 설정
+jwt:
+  secret: ${JWT_SECRET}
+
+# Gateway 보안 토큰
+gateway:
+  security:
+    token: ${GATEWAY_SECURITY_TOKEN}
+
+# Actuator 설정
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+
+# 로깅 설정
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty: INFO
+    com.sokdak.gateway: DEBUG
