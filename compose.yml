@@ -1,0 +1,15 @@
+services:
+  gateway:
+    image: ${ECR_REGISTRY}/sokdak-gateway:latest
+    container_name: sokdak-gateway
+    ports:
+      - "${SERVER_PORT}:${SERVER_PORT}"
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - sokdak-network
+
+networks:
+  sokdak-network:
+    driver: bridge

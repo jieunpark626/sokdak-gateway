@@ -1,0 +1,70 @@
+name: Deploy Sokdak Gateway
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  IMAGE_NAME: sokdak-gateway
+  IMAGE_TAG: latest
+  DIR: /home/ubuntu/sokdak-gateway
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 1. AWS 인증
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 2. ECR 로그인
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 3. JAR 빌드
+      - name: Build Spring Boot JAR
+        run: ./gradlew clean build -x test
+
+      # 4. Docker 이미지 빌드 & 푸시
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -t $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+
+      # 5. EC2 배포
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: AWS_REGION,ECR_REGISTRY
+          script: |
+            cd ${{ env.DIR }}
+
+            # ECR 로그인
+            aws ecr get-login-password --region $AWS_REGION \
+              | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+            # 배포
+            docker compose pull
+            docker compose up -d
+
+            # 안 쓰는 이미지 정리
+            docker image prune -af
