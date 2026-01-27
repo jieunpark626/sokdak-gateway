@@ -52,11 +52,11 @@ spring:
           filters:
             - name: JwtAuthenticationFilter
 
-        # POST /conversations/** - 사용량 체크 필요
-        - id: ai-conversations-post-route
+        # POST /conversations/*/messages - 사용량 체크 필요 (메시지 전송)
+        - id: ai-conversations-messages-post-route
           uri: ${AI_SERVER_URL:http://localhost:8001}
           predicates:
-            - Path=/conversations/**
+            - Path=/conversations/*/messages
             - Method=POST
           filters:
             - name: JwtAuthenticationFilter
@@ -64,7 +64,7 @@ spring:
               args:
                 action: AI_CHAT
 
-        # 기타 /conversations/** - 사용량 체크 불필요
+        # 기타 /conversations/** - 사용량 체크 불필요 (대화 생성 포함)
         - id: ai-conversations-route
           uri: ${AI_SERVER_URL:http://localhost:8001}
           predicates:
