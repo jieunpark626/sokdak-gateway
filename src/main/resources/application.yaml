@@ -76,7 +76,10 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins: ${ALLOWED_ORIGINS:http://localhost:3000}
+            allowedOrigins:
+              - ${ALLOWED_ORIGINS}
+              - http://localhost:3000
+              - http://localhost:5173
             allowedMethods:
               - GET
               - POST
@@ -89,10 +92,12 @@ spring:
               - Content-Type
               - Accept
               - X-Requested-With
+              - Cookie
             exposedHeaders:
               - X-User-Id
               - X-Gateway-Token
-            allowCredentials: false
+              - Set-Cookie
+            allowCredentials: true
             maxAge: 3600
 
 # JWT 설정
