@@ -92,9 +92,11 @@ spring:
               - Content-Type
               - Accept
               - X-Requested-With
+              - Cookie
             exposedHeaders:
               - X-User-Id
               - X-Gateway-Token
+              - Set-Cookie
             allowCredentials: true
             maxAge: 3600
 
