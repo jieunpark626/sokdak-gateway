@@ -16,6 +16,14 @@ spring:
           filters:
             - AddRequestHeader=X-Gateway-Token,${GATEWAY_SECURITY_TOKEN}
 
+        # WebSocket 라우트 - 랜덤채팅
+        - id: random-chat-websocket-route
+          uri: ${SOKDAK_SERVER_URL:http://localhost:8080}
+          predicates:
+            - Path=/ws/random-chat
+          filters:
+            - name: WebSocketJwtAuthFilter
+
         # 인증 필요 경로 (Protected) - sokdak 서버
         - id: journals-route
           uri: ${SOKDAK_SERVER_URL:http://localhost:8080}
@@ -78,8 +86,6 @@ spring:
           '[/**]':
             allowedOrigins:
               - ${ALLOWED_ORIGINS}
-              - http://localhost:3000
-              - http://localhost:5173
             allowedMethods:
               - GET
               - POST
@@ -95,7 +101,6 @@ spring:
               - Cookie
             exposedHeaders:
               - X-User-Id
-              - X-Gateway-Token
               - Set-Cookie
             allowCredentials: true
             maxAge: 3600
@@ -117,11 +122,11 @@ management:
         include: health
   endpoint:
     health:
-      show-details: always
+      show-details: never
 
 # 로깅 설정
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
-    reactor.netty: INFO
-    com.sokdak.gateway: DEBUG
+    org.springframework.cloud.gateway: WARN
+    reactor.netty: WARN
+    com.sokdak.gateway: INFO
